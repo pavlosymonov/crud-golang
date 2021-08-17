@@ -3,11 +3,13 @@ package http
 import (
 	"context"
 	"encoding/json"
+	"github.com/gorilla/mux"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"main/internal/models/user"
 	"net/http"
 )
 
-func (s *Server) CreateUserEndpoint(response http.ResponseWriter, request *http.Request) {
+func (s *Server) CreateUser(response http.ResponseWriter, request *http.Request) {
 	response.Header().Add("content-type", "application/json")
 
 	var user user.User
@@ -22,7 +24,7 @@ func (s *Server) CreateUserEndpoint(response http.ResponseWriter, request *http.
 	json.NewEncoder(response).Encode(result)
 }
 
-func (s *Server) GetUsersEndpoint(response http.ResponseWriter, request *http.Request) {
+func (s *Server) GetUsers(response http.ResponseWriter, request *http.Request) {
 	response.Header().Add("content-type", "application/json")
 
 	users, err := s.userService.List(context.TODO())
@@ -32,4 +34,22 @@ func (s *Server) GetUsersEndpoint(response http.ResponseWriter, request *http.Re
 	}
 
 	json.NewEncoder(response).Encode(users)
+}
+
+func (s *Server) DeleteUser(response http.ResponseWriter, request *http.Request) {
+	response.Header().Add("content-type", "application/json")
+	params := mux.Vars(request)["id"]
+
+	_id, err := primitive.ObjectIDFromHex(params) // convert params to mongodb Hex ID
+	if err != nil {
+		http.Error(response, NewResponse(StatusError, err.Error()), http.StatusInternalServerError)
+	}
+
+	err = s.userService.Delete(context.TODO(), _id)
+	if err != nil {
+		http.Error(response, NewResponse(StatusError, err.Error()), http.StatusBadRequest)
+		return
+	}
+
+	response.WriteHeader(http.StatusNoContent)
 }

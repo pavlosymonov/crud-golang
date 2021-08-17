@@ -27,8 +27,9 @@ func New(userService user.User) *Server {
 func (s *Server) SetupRouts() {
 	apiRouter := s.router.PathPrefix("/api/v0").Subrouter()
 
-	apiRouter.HandleFunc("/user", s.CreateUserEndpoint).Methods("POST")
-	apiRouter.HandleFunc("/users", s.GetUsersEndpoint).Methods("GET")
+	apiRouter.HandleFunc("/user", s.CreateUser).Methods("POST")
+	apiRouter.HandleFunc("/users", s.GetUsers).Methods("GET")
+	apiRouter.HandleFunc("/user/{id}", s.DeleteUser).Methods("DELETE")
 }
 
 

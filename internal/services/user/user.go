@@ -4,18 +4,21 @@ import (
 	"context"
 	"errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"main/internal/models/user"
 )
 
 var (
-	ErrAlreadyExist = errors.New("user already exist")
-	ErrNotExist     = errors.New("user doesn't exist")
+	ErrInternal = errors.New("internal error")
+	ErrAlreadyExist = errors.New("already exist")
+	ErrNotFound     = errors.New("not found")
 )
 
 type User interface {
 	Create(ctx context.Context, c user.User) (*mongo.InsertOneResult, error)
 	List(ctx context.Context) ([]user.User, error)
+	Delete(ctx context.Context, id primitive.ObjectID) error
 }
 
 type Service struct {
@@ -40,7 +43,7 @@ func (s *Service) Create(ctx context.Context, user user.User) (*mongo.InsertOneR
 }
 
 func (s *Service) List(ctx context.Context) ([]user.User, error) {
-	var users []user.User
+	var users = make([]user.User, 0)
 	collection := s.db.Database("store-nest").Collection("users")
 
 	cursor, err := collection.Find(ctx, bson.M{})
@@ -61,43 +64,18 @@ func (s *Service) List(ctx context.Context) ([]user.User, error) {
 	return users, nil
 }
 
+func (s *Service) Delete(ctx context.Context, id primitive.ObjectID) error {
+	collection := s.db.Database("store-nest").Collection("users")
 
-//func (service *Service) Update(ctx context.Context, id int, c user.User) (*user.User, error) {
-//	res, err := service.db.UpdateCounty(ctx, id, c)
-//	if err == storage.ErrAlreadyExist {
-//		return nil, ErrAlreadyExist
-//	}
-//	if err == storage.ErrNotExist {
-//		return nil, ErrNotExist
-//	}
-//	if err != nil {
-//		return nil, fmt.Errorf("county updating failed: %w", err)
-//	}
-//
-//	return res, nil
-//}
+	qry := bson.M{"_id": id}
 
-//func (service *Service) Delete(ctx context.Context, id int) error {
-//	err := service.s.DeleteCounty(ctx, id)
-//	if err == storage.ErrNotExist {
-//		return ErrNotExist
-//	}
-//	if err != nil {
-//		return fmt.Errorf("county deleting failed: %w", err)
-//	}
-//
-//	return nil
-//}
-//
-//func (service *Service) Read(ctx context.Context, id int) (*county.County, error) {
-//	res, err := service.s.ReadCounty(ctx, id)
-//	if err == storage.ErrNotExist {
-//		return nil, ErrNotExist
-//	}
-//	if err != nil {
-//		return nil, fmt.Errorf("county reading failed: %w", err)
-//	}
-//
-//	return res, nil
-//}
-//
+	res, err := collection.DeleteOne(ctx, qry)
+	if err != nil {
+		return err
+	}
+	if res.DeletedCount == 0 {
+		return ErrNotFound
+	}
+
+	return nil
+}
