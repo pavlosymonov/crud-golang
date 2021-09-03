@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/gorilla/mux"
 	"log"
-	"main/internal/services/user"
+	userpb "main/proto"
 	"net/http"
 	"os"
 	"os/signal"
@@ -13,14 +13,14 @@ import (
 )
 
 type Server struct {
-	router             *mux.Router
-	userService        user.User
+	router *mux.Router
+	userClient userpb.UserServiceClient
 }
 
-func New(userService user.User) *Server {
+func New(grpcUserClient userpb.UserServiceClient) *Server {
 	return &Server{
 		router: mux.NewRouter(),
-		userService: userService,
+		userClient: grpcUserClient,
 	}
 }
 

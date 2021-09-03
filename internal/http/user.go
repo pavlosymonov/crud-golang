@@ -4,33 +4,48 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/gorilla/mux"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"main/internal/models/user"
+	"io"
+	userpb "main/proto"
 	"net/http"
 )
 
 func (s *Server) CreateUser(response http.ResponseWriter, request *http.Request) {
 	response.Header().Add("content-type", "application/json")
 
-	var user user.User
+	var user userpb.User
 	json.NewDecoder(request.Body).Decode(&user)
 
-	result, err := s.userService.Create(context.TODO(), user)
+	userReq := &userpb.CreateUserReq{User: &user}
+
+	result, err := s.userClient.CreateUser(context.TODO(), userReq)
 	if err != nil {
 		http.Error(response, NewResponse(StatusError, err.Error()), http.StatusBadRequest)
 		return
 	}
 
-	json.NewEncoder(response).Encode(result)
+	json.NewEncoder(response).Encode(result.User)
 }
 
 func (s *Server) GetUsers(response http.ResponseWriter, request *http.Request) {
 	response.Header().Add("content-type", "application/json")
 
-	users, err := s.userService.List(context.TODO())
+	req := &userpb.ListUsersReq{}
+	stream, err := s.userClient.ListUsers(context.TODO(), req)
 	if err != nil {
 		http.Error(response, NewResponse(StatusError, err.Error()), http.StatusBadRequest)
 		return
+	}
+	var users []*userpb.User
+	for {
+		res, err := stream.Recv()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			http.Error(response, NewResponse(StatusError, err.Error()), http.StatusInternalServerError)
+			return
+		}
+		users = append(users, res.GetUser())
 	}
 
 	json.NewEncoder(response).Encode(users)
@@ -40,12 +55,11 @@ func (s *Server) DeleteUser(response http.ResponseWriter, request *http.Request)
 	response.Header().Add("content-type", "application/json")
 	params := mux.Vars(request)["id"]
 
-	_id, err := primitive.ObjectIDFromHex(params) // convert params to mongodb Hex ID
-	if err != nil {
-		http.Error(response, NewResponse(StatusError, err.Error()), http.StatusInternalServerError)
+	req := &userpb.DeleteUserReq{
+		Id: params,
 	}
 
-	err = s.userService.Delete(context.TODO(), _id)
+	_, err := s.userClient.DeleteUser(context.TODO(), req)
 	if err != nil {
 		http.Error(response, NewResponse(StatusError, err.Error()), http.StatusBadRequest)
 		return
