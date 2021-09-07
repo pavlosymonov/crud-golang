@@ -13,7 +13,11 @@ func (s *Server) CreateUser(response http.ResponseWriter, request *http.Request)
 	response.Header().Add("content-type", "application/json")
 
 	var user userpb.User
-	json.NewDecoder(request.Body).Decode(&user)
+	err := json.NewDecoder(request.Body).Decode(&user)
+	if err != nil {
+		http.Error(response, NewResponse(StatusError, err.Error()), http.StatusInternalServerError)
+		return
+	}
 
 	userReq := &userpb.CreateUserReq{User: &user}
 
@@ -23,7 +27,11 @@ func (s *Server) CreateUser(response http.ResponseWriter, request *http.Request)
 		return
 	}
 
-	json.NewEncoder(response).Encode(result.User)
+	err = json.NewEncoder(response).Encode(result)
+	if err != nil {
+		http.Error(response, NewResponse(StatusError, err.Error()), http.StatusInternalServerError)
+		return
+	}
 }
 
 func (s *Server) GetUsers(response http.ResponseWriter, request *http.Request) {
@@ -48,7 +56,11 @@ func (s *Server) GetUsers(response http.ResponseWriter, request *http.Request) {
 		users = append(users, res.GetUser())
 	}
 
-	json.NewEncoder(response).Encode(users)
+	err = json.NewEncoder(response).Encode(users)
+	if err != nil {
+		http.Error(response, NewResponse(StatusError, err.Error()), http.StatusInternalServerError)
+		return
+	}
 }
 
 func (s *Server) DeleteUser(response http.ResponseWriter, request *http.Request) {

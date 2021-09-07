@@ -13,13 +13,13 @@ import (
 )
 
 type Server struct {
-	router *mux.Router
+	router     *mux.Router
 	userClient userpb.UserServiceClient
 }
 
 func New(grpcUserClient userpb.UserServiceClient) *Server {
 	return &Server{
-		router: mux.NewRouter(),
+		router:     mux.NewRouter(),
 		userClient: grpcUserClient,
 	}
 }
